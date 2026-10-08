@@ -1,0 +1,19 @@
+# mautrix-discord for the Discord account "LABEL". One bridge instance per Discord account, so
+# identities, rooms and sessions never mix. Generated from bridges/discord-template/ by
+# scripts/new-discord.sh. Config/registration/state: data/bridges/discord-LABEL/ (gitignored).
+services:
+  discord-LABEL:
+    image: dock.mau.dev/mautrix/discord:v0.7.7
+    platform: ${HUB_PLATFORM:-linux/arm64}
+    security_opt:
+      - ${HUB_SECOPT:-seccomp=/home/claude/projects/matrix-hub/seccomp-arm64.json}
+    restart: unless-stopped
+    networks: [hub]
+    environment:
+      UID: "0"   # container root = host user claude under rootless Docker
+      GID: "0"
+    volumes:
+      - ../../data/bridges/discord-LABEL:/data
+    depends_on:
+      synapse:
+        condition: service_healthy

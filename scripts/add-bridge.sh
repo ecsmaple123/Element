@@ -59,7 +59,7 @@ if [[ -z "$(docker compose exec -T postgres psql -U postgres -Atc "select 1 from
   DB_URI="$(scripts/new-db.sh "$db")"; export DB_URI
 else
   echo "[2] database $db exists; reusing URI from config"
-  DB_URI="$(yq '.database.uri' /bridges/"$svc"/config.yaml)"; export DB_URI
+  DB_URI="$(yq '.database.uri // .appservice.database.uri' /bridges/"$svc"/config.yaml)"; export DB_URI
 fi
 
 echo "[3] applying $src/config.yq"
