@@ -20,6 +20,9 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   Bridge health: 1 login, 42 chats, 394 backfilled messages, 2 harmless ERRs (link-preview
   thumbnails 403). Second restore test (database-only, real data) passed.
 
+- 2026-10-08 — **Stage 5 (Discord):** alpha and beta bridged, one mautrix-discord instance each.
+  Separation verified (see below). Waiting only on one live Element→Discord send in a [beta] room.
+
 ## WhatsApp bridge (Stage 4)
 - **Bridge:** mautrix-whatsapp `v0.2609.0` (bridgev2, internally "v26.09"); service `whatsapp`,
   internal port 29318 (not published). Bot: `@whatsappbot:hub.home.arpa`; ghosts `@whatsapp_<id>`.
@@ -50,6 +53,48 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   4. `docker compose up -d --force-recreate synapse`.
   5. Optionally drop the DB `mautrix_whatsapp` + role.
   6. Delete `data/bridges/whatsapp/`.
+
+## Discord bridges (Stage 5)
+- **Model:** one mautrix-discord `v0.7.7` instance per Discord account (that version supports only
+  one Discord login per Matrix user, and separate instances keep identities and rooms apart).
+- **Per account `<label>`:**
+  - service `discord-<label>`, internal port 29334
+  - DB `mautrix_discord_<label>`
+  - bot `@discordbot_<label>`, ghosts `@discord_<label>_*`
+  - rooms "[<label>] #channel", people "Name [<label>]", command prefix `!dc-<label>`
+  - only `@piadmin` may use it
+- **Accounts:**
+  - `alpha` (low-risk test, since 2026-10-07): spaces "Alpha - Discord", "Alpha - Discord DMs"
+  - `beta` (since 2026-10-08): spaces "Beta - Discord" (named by user), "Beta - Discord DMs"
+- **Add an account:**
+  1. `scripts/new-discord.sh <label>`
+  2. `docker compose up -d --force-recreate synapse`
+  3. `docker compose up -d discord-<label>`
+  4. Log in via the bot DM, then `scripts/discord-label-spaces.sh <label>`
+  5. `bash scripts/check-discord-separation.sh`
+- **Settings (template `bridges/discord-template/`):**
+  - backfill: DMs 20 initial / 50 missed, channels 0 initial / 20 missed
+  - channels muted on creation, no federation, encryption off, local bot icon
+- **Separation check (`scripts/check-discord-separation.sh`, read-only), 2026-10-08:**
+  - different Discord accounts per instance
+  - no room with users from two instances
+  - every named portal carries its own label
+  - each space holds rooms of one instance only
+  - every message attributed to @piadmin left from that instance's own account
+    (alpha 44/0, beta 37/0)
+- **Health check on alpha (2026-10-08, ~1 day in):** login active; no captcha/401/403/429/invalid session.
+  Warnings are only "unknown event type" (voice/boost events the bridge ignores).
+- **Not bridged** (checked against the v0.7.7 source):
+  - voice channels (incl. their text chat), stage channels, forum channels
+  - voice/video calls (DM calls show only "started a call")
+  - Use the Discord app for voice; running it alongside the bridge is fine.
+  - WhatsApp calls aren't bridged either (only a notice).
+- **Risk:** this is a self-bot login (against Discord ToS). Watch for captchas, forced re-logins or
+  phone-verification prompts; if one appears, stop that instance
+  (`docker compose stop discord-<label>`) before trying again.
+- **Upgrade:** bump the tag in the template **and** each `bridges/discord-*/compose.yaml`, back up,
+  then `docker compose up -d`. The multi-login rewrite (`megadiscord` branch) is unreleased as of
+  2026-10-08; switching to it later would be a migration (new rooms).
 
 ## Discord: choosing which channels are bridged (any instance; example: alpha)
 In the bot DM (`@discordbot_<label>`), per server:

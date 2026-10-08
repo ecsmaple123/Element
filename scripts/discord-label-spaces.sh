@@ -41,7 +41,7 @@ fix() { # room default_name new_name
   if [[ -z "$url" || "$url" == mxc://maunium.net/* ]]; then
     api PUT "$1/state/m.room.avatar/" "{\"url\": \"$ICON\"}" >/dev/null && echo "  set local icon on '$3'"
   else
-    echo "  kept picture on '$name'"
+    echo "  kept picture on '$3'"
   fi
 }
 fix "$space"   "Discord"         "$Label - Discord"
