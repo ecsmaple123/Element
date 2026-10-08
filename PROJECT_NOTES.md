@@ -8,13 +8,61 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - 2026-10-07 — Stage 1 plan written (PLAN.md), **awaiting approval** + checks C3/A2.
   The user authorised deleting/restarting the old `/home/pi/matrix` experiment.
 
+- 2026-10-07 — Plan approved. Server name **hub.home.arpa** (permanent). Discord labels: beta, alpha
+  (alpha = low-risk test account, bridged first). More Discord accounts may be added later.
+  `/srv/homeserver` is ignored. The user deleted the old `/home/pi/matrix` experiment and installed `uidmap`.
+- 2026-10-07 — **Stage 2 (core) running.** Admin user + Element login: waiting on the user.
+
+## Running now (Stage 2)
+| Service | Image | Notes |
+|---|---|---|
+| postgres | postgres:17.11-alpine | volume `matrixhub_pgdata` (in .docker-data) |
+| synapse | matrixdotorg/synapse:v1.162.0 | config `synapse/`, data + secrets `data/synapse/` |
+| element | vectorim/element-web:v1.12.30 | config `element/config.json` |
+| caddy | caddy:2.11.7-alpine | **192.168.0.129:8443/tcp**, local CA in `data/caddy/caddy/pki/` |
+
+- URL: https://192.168.0.129:8443 (Element; Synapse is at /_matrix behind it).
+- Root CA for devices: `data/caddy/caddy/pki/authorities/local/root.crt`
+  (copy on the PC: `C:\pi-work\matrix-hub\matrix-hub-root-ca.crt`, valid until 2036).
+  Its private key sits next to it: anyone holding it can impersonate any HTTPS site to devices
+  that trust it. It's included in backups, so keep backups private.
+- Measured RAM (idle): ≈570 MB in total across rootless Docker and all 4 services. `docker stats` shows 0 B
+  because the memory cgroup is off. Measure with:
+  `ps -eo uid=,rss=,comm= | awk '$1==1001 || ($1>=165536 && $1<=231071) {s+=$2} END {print s/1024 " MB"}'`
+- Verified 2026-10-07: TLS OK; client API 200; registration 403; federation and key endpoints 404;
+  the only new host listener is 192.168.0.129:8443/tcp (no UDP); reachable from the LAN PC.
+
+### Rootless Docker (claude)
+- Installed by `dockerd-rootless-setuptool.sh install` → `~/.config/systemd/user/docker.service`,
+  plus `~/.config/systemd/user/docker.service.d/10-priority.conf` (Nice=10, IO best-effort 7).
+- `~/.config/docker/daemon.json`: data-root = `matrix-hub/.docker-data`, log driver `local` 5m×3.
+- Linger enabled (`loginctl enable-linger claude`), so it starts at boot without a login.
+- CLI context `rootless` is the default for claude. hub.sh also sets DOCKER_HOST explicitly.
+- Socket: `/run/user/1001/docker.sock`. Network: rootlesskit 2.3.4 + slirp4netns, builtin port driver.
+
+### Stop / start / remove
+- Stop containers (data kept): `cd ~/projects/matrix-hub && ./hub.sh stop` (start: `./hub.sh up`)
+- Stop everything incl. claude's Docker daemon: `./hub.sh daemon-stop`. Until the next boot or
+  `./hub.sh daemon-start`. To also skip it at boot: `systemctl --user disable docker.service`
+- **Remove completely (one command):** `./hub.sh remove`. It asks for confirmation, then removes the containers,
+  the database volume, images and rootless Docker. The system Docker daemon / the VPNs are untouched.
+- None of these touch the VPNs: different daemon, no firewall/routing changes.
+
+### VPN check (after any stage that starts something)
+As `pi`: `docker ps --filter name=<vpn-container> --format '{{.Names}} {{.Status}}'` and
+`<check the VPN handshakes>`. From a phone on mobile data, connect each VPN and load a page.
+
 ## Decisions (see PLAN.md for reasoning)
 - Federation: off (not needed for bridges). Registration: closed.
 - Containers: separate **rootless Docker** as claude; the rootful daemon (runs the VPN) is never used.
-- All arm64 images + custom seccomp profile (pending C3 confirmation).
+- All arm64 images + `seccomp-arm64.json` (Docker 28.5.2 default profile with archMap replaced by
+  `architectures: [SCMP_ARCH_ARM, SCMP_ARCH_AARCH64]`). Verified: default → exit 159;
+  custom → `aarch64`, `Seccomp: 2` (filter active), and `unshare -U` is still refused.
+  Regenerate this file if Docker gets a major update (source: moby vendor/github.com/moby/profiles/seccomp/default.json).
+- Synapse containers run as container-root = host user claude (rootless), so data files stay claude-owned.
 - Synapse + Postgres; Caddy (internal CA) serves Element + proxies Synapse on 192.168.0.129:8443.
 - Discord: one mautrix-discord instance per account.
-- Server name: pending (own domain recommended; `hub.home.arpa` fallback; not the dynamic-DNS hostname).
+- Server name: `hub.home.arpa` (chosen 2026-10-07; permanent).
 
 ## Findings after Stage 0
 - C1: arm64 container produced no output; old Synapse crash-loops with exit 159 (SIGSYS) →
