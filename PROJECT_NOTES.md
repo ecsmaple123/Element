@@ -15,8 +15,9 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - 2026-10-07 — Off-Pi backup copy: user chose to keep it **manual** (pull-backups.sh on the PC).
 - 2026-10-07 — **Stage 3 done:** backup script + daily timer, restore script, side-by-side
   restore test passed, first backups copied to the PC.
-- 2026-10-07 — **Stage 4 (WhatsApp) bridge running**; waiting for the user to link the phone and
-  test send/receive.
+- 2026-10-07 — **Stage 4 (WhatsApp) done.** The user linked the phone and confirmed send + receive work.
+  Bridge health: 1 login, 42 chats, 394 backfilled messages, 2 harmless ERRs (link-preview
+  thumbnails 403). Second restore test (database-only, real data) passed.
 
 ## WhatsApp bridge (Stage 4)
 - **Bridge:** mautrix-whatsapp `v0.2609.0` (bridgev2, internally "v26.09"); service `whatsapp`,
@@ -31,7 +32,9 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   It's a powerful token and lives only in data/ and the backups.
 - **Settings:** encryption off (bridge and hub are on the same Pi); backfill 50 msgs per new chat,
   500 catch-up; no full 1-year history request; one "WhatsApp" space per login; logs to stdout only.
-- **Health:** Synapse → bridge appservice ping OK (4 ms). RAM ≈28 MB.
+- **Health:** Synapse → bridge appservice ping OK (4 ms). RAM ≈45 MB after the first sync
+  (Synapse grew to ≈315 MB with 44 rooms). Backups grew to ≈54 MB (WhatsApp media).
+- **Logs:** "Event handling is taking long" warnings during the first history sync are expected on the SD card.
 - **Link the phone:** DM `@whatsappbot:hub.home.arpa` → `login qr` (or `login phone` for a pairing
   code). On the phone: WhatsApp → Settings → Linked devices → Link a device.
 - **Keep the link alive:** the phone must come online at least every ~14 days, or WhatsApp drops
@@ -122,6 +125,9 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - **Live hub:** unaffected throughout.
 - **Safety check:** restore.sh refused to run against the live project name.
 - **Afterwards:** the test copy was deleted.
+- **Second test (2026-10-07, after WhatsApp):** database-only (`RESTORE_START=0`), side by side.
+  The counts of every Synapse + mautrix_whatsapp table matched live (Synapse events: 1303 vs 1305;
+  live kept receiving). The bridge config/session was identical. **No bridge was started in the copy.**
 - **Not tested:** restore on a different CPU type (amd64). The DB dumps are architecture-independent,
   but the compose overrides below for amd64 are untested.
 
@@ -145,8 +151,11 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
    - `HUB_BIND=<new LAN IP>`
    - If the IP changed, also replace `192.168.0.129` in `caddy/Caddyfile`, `element/config.json`
      and `synapse/homeserver.yaml` (public_baseurl). The server name stays `hub.home.arpa`.
-5. **Run the restore:** `cd ~/projects/matrix-hub && ./hub.sh restore <backup>`. It refuses if this
-   project already has containers.
+5. **Stop the old hub for good first** (if it still runs anywhere): two copies of a bridge with the
+   same WhatsApp/Discord session must never run at once. Then
+   `cd ~/projects/matrix-hub && ./hub.sh restore <backup>`. It refuses if this project already has
+   containers. `RESTORE_START=0 ./hub.sh restore <backup>` restores the databases only, without
+   starting anything.
 6. **Re-enable backups:** copy `scripts/systemd/matrixhub-backup.*` to `~/.config/systemd/user/`
    and `systemctl --user enable --now matrixhub-backup.timer`.
 7. **Devices:** they keep trusting the same CA (it's in the backup). Log in again if needed.
