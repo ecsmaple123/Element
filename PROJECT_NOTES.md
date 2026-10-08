@@ -15,13 +15,44 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - 2026-10-07 — Off-Pi backup copy: user chose to keep it **manual** (pull-backups.sh on the PC).
 - 2026-10-07 — **Stage 3 done:** backup script + daily timer, restore script, side-by-side
   restore test passed, first backups copied to the PC.
+- 2026-10-07 — **Stage 4 (WhatsApp) bridge running**; waiting for the user to link the phone and
+  test send/receive.
+
+## WhatsApp bridge (Stage 4)
+- **Bridge:** mautrix-whatsapp `v0.2609.0` (bridgev2, internally "v26.09"); service `whatsapp`,
+  internal port 29318 (not published). Bot: `@whatsappbot:hub.home.arpa`; ghosts `@whatsapp_<id>`.
+- **Files:**
+  - tracked: `bridges/whatsapp/compose.yaml` + `config.yq` (our settings, no secrets)
+  - generated: `data/bridges/whatsapp/config.yaml` (full config incl. tokens/DB password),
+    `config.example.yaml` (pristine default, for diffing on upgrades), `registration.yaml`
+- **Database:** `mautrix_whatsapp` (own role).
+- **Double puppeting:** shared appservice `data/bridges/doublepuppet.yaml` (no URL; token lets
+  bridges act as *your* Matrix user, so messages you send from the phone appear as you).
+  It's a powerful token and lives only in data/ and the backups.
+- **Settings:** encryption off (bridge and hub are on the same Pi); backfill 50 msgs per new chat,
+  500 catch-up; no full 1-year history request; one "WhatsApp" space per login; logs to stdout only.
+- **Health:** Synapse → bridge appservice ping OK (4 ms). RAM ≈28 MB.
+- **Link the phone:** DM `@whatsappbot:hub.home.arpa` → `login qr` (or `login phone` for a pairing
+  code). On the phone: WhatsApp → Settings → Linked devices → Link a device.
+- **Keep the link alive:** the phone must come online at least every ~14 days, or WhatsApp drops
+  the linked device.
+- **Upgrade:** bump the tag in `bridges/whatsapp/compose.yaml` → `./hub.sh backup` →
+  `docker compose up -d whatsapp`. It migrates its DB itself. Read the release notes first.
+- **Stop just this bridge:** `docker compose stop whatsapp`. **Remove it:**
+  1. In the bot DM: `logout`.
+  2. `docker compose rm -sf whatsapp`.
+  3. Delete the include line in `compose.yaml` and the registration line in
+     `synapse/homeserver.yaml`.
+  4. `docker compose up -d --force-recreate synapse`.
+  5. Optionally drop the DB `mautrix_whatsapp` + role.
+  6. Delete `data/bridges/whatsapp/`.
 
 ## Open items
 - Off-Pi backup copy is manual by choice (2026-10-07); reminder: run pull-backups.sh regularly.
 - Optional: encrypt off-Pi backups (gpg/age) if the PC copy might end up in a cloud-synced folder.
 - Optional: test a restore on an amd64 machine with Docker, if one becomes available.
 
-## Running now (Stage 2)
+## Core services (Stage 2)
 | Service | Image | Notes |
 |---|---|---|
 | postgres | postgres:17.11-alpine | volume `matrixhub_pgdata` (in .docker-data) |

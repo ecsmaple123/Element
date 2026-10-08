@@ -8,27 +8,23 @@ media_store_path: /data/media_store
 log_config: /config/log.config
 report_stats: false
 enable_metrics: false
-
 listeners:
   - port: 8008
-    bind_addresses: ["0.0.0.0"]   # inside the container network only; Caddy is the front door
+    bind_addresses: ["0.0.0.0"] # inside the container network only; Caddy is the front door
     type: http
     tls: false
     x_forwarded: true
     resources:
-      - names: [client]           # no "federation" resource
+      - names: [client] # no "federation" resource
         compress: false
-
 # --- Federation off ---
-federation_domain_whitelist: []   # empty list = federate with nobody
+federation_domain_whitelist: [] # empty list = federate with nobody
 trusted_key_servers: []
 allow_public_rooms_over_federation: false
 allow_public_rooms_without_auth: false
-
 # --- Closed server ---
 enable_registration: false
 allow_guest_access: false
-
 # --- Keep it light ---
 presence:
   enabled: false
@@ -37,6 +33,7 @@ caches:
   global_factor: 0.5
 max_upload_size: 100M
 forget_rooms_on_leave: true
-
 # Bridge registrations are appended here, one line per bridge (mounted at /bridges).
-app_service_config_files: []
+app_service_config_files:
+  - /bridges/doublepuppet.yaml
+  - /bridges/whatsapp/registration.yaml
