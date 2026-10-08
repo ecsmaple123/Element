@@ -3,7 +3,7 @@
 # the system Docker daemon (which runs the VPN) is never used.
 set -euo pipefail
 cd "$(dirname "$0")"
-export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+export DOCKER_HOST="${DOCKER_HOST:-unix:///run/user/$(id -u)/docker.sock}"
 
 usage() {
   cat <<EOF
@@ -41,6 +41,8 @@ case "${1:-}" in
     echo "VPNs and the system Docker daemon are not affected. Take a backup first."
     read -rp "Type REMOVE to continue: " ans
     [[ "$ans" == "REMOVE" ]] || { echo "Aborted."; exit 1; }
+    systemctl --user disable --now matrixhub-backup.timer 2>/dev/null || true
+    rm -f ~/.config/systemd/user/matrixhub-backup.{service,timer}
     docker compose down -v --rmi all || true
     systemctl --user disable --now docker.service docker.socket || true
     PATH=/usr/sbin:/sbin:$PATH dockerd-rootless-setuptool.sh uninstall -f || true

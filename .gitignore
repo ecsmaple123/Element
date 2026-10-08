@@ -2,3 +2,5 @@
 data/
 .docker-data/
 backups/
+matrix-hub-root-ca.crt
+moby-default-seccomp.json

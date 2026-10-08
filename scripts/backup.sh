@@ -9,7 +9,7 @@
 # Keeps the newest $KEEP backups (default 7). Contents are sensitive: secrets, keys, message history.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+export DOCKER_HOST="${DOCKER_HOST:-unix:///run/user/$(id -u)/docker.sock}"
 PROJECT="${COMPOSE_PROJECT_NAME:-matrixhub}"
 KEEP="${KEEP:-7}"
 dc() { docker compose -p "$PROJECT" "$@"; }

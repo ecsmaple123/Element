@@ -11,7 +11,14 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - 2026-10-07 — Plan approved. Server name **hub.home.arpa** (permanent). Discord labels: beta, alpha
   (alpha = low-risk test account, bridged first). More Discord accounts may be added later.
   `/srv/homeserver` is ignored. The user deleted the old `/home/pi/matrix` experiment and installed `uidmap`.
-- 2026-10-07 — **Stage 2 (core) running.** Admin user + Element login: waiting on the user.
+- 2026-10-07 — **Stage 2 (core) running.** Admin user `@piadmin:hub.home.arpa` created by the user.
+- 2026-10-07 — **Stage 3 done:** backup script + daily timer, restore script, side-by-side
+  restore test passed, first backups copied to the PC.
+
+## Open items
+- Automate the off-Pi backup copy (PC Task Scheduler, or a USB drive on the Pi): user's choice.
+- Optional: encrypt off-Pi backups (gpg/age) if the PC copy might end up in a cloud-synced folder.
+- Optional: test a restore on an amd64 machine with Docker, if one becomes available.
 
 ## Running now (Stage 2)
 | Service | Image | Notes |
@@ -44,9 +51,74 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - Stop containers (data kept): `cd ~/projects/matrix-hub && ./hub.sh stop` (start: `./hub.sh up`)
 - Stop everything incl. claude's Docker daemon: `./hub.sh daemon-stop`. Until the next boot or
   `./hub.sh daemon-start`. To also skip it at boot: `systemctl --user disable docker.service`
-- **Remove completely (one command):** `./hub.sh remove`. It asks for confirmation, then removes the containers,
+- **Remove completely (one command):** `./hub.sh remove` (also removes the backup timer; backups/ are kept). It asks for confirmation, then removes the containers,
   the database volume, images and rootless Docker. The system Docker daemon / the VPNs are untouched.
 - None of these touch the VPNs: different daemon, no firewall/routing changes.
+
+## Backups (Stage 3, 2026-10-07)
+- **What a backup contains:** `./hub.sh backup` (also run daily at ~04:15 by the systemd *user*
+  timer `matrixhub-backup.timer`) writes `backups/matrix-hub-<timestamp>/`:
+  - `db/globals.sql`: Postgres roles.
+  - `db/<db>.dump`: every database, auto-discovered, so bridge DBs are included without changes.
+    These are logical dumps, so they work on any CPU type.
+  - `files.tar.gz`: the whole project folder (configs, `.env`, git history, `data/` with the
+    Synapse signing key + secrets + media, the Caddy CA, bridge state) except `.docker-data/`
+    and `backups/`.
+  - `MANIFEST`: versions + row counts. `SHA256SUMS`.
+- **Retention:** the 7 newest backups stay on the Pi. Each one is ~0.4 MB now and grows with
+  media and history.
+- **Off-Pi copy:** on the PC run `bash C:\pi-work\matrix-hub\pull-backups.sh` (Git Bash). It copies
+  new backups, verifies their checksums, and keeps 14. *Not automated yet; see "Open items".*
+- **Sensitive:** backups hold every secret, the CA private key and message history.
+  Folders are mode 700/600 on the Pi. Keep the PC copy private.
+- **Timer control:** `systemctl --user list-timers` / `systemctl --user disable --now matrixhub-backup.timer`.
+  Logs: `journalctl --user -u matrixhub-backup`.
+
+## Restore (tested 2026-10-07)
+**Test performed (on the Pi, side by side):**
+- **Method:** used only a copied backup folder → extracted `files.tar.gz` into a new folder →
+  `scripts/restore.sh` under the separate project `matrixhub-restoretest` (own network
+  10.231.1.0/24, own DB volume, 127.0.0.1:18443).
+- **Results:**
+  - All row counts matched the MANIFEST.
+  - The signing key was identical.
+  - The restored CA served valid HTTPS.
+  - Element loaded.
+  - The `@piadmin` row, password hash included, was identical to live.
+  - A throwaway admin created via the restored shared secret could log in, create a room and
+    send a message.
+- **Live hub:** unaffected throughout.
+- **Safety check:** restore.sh refused to run against the live project name.
+- **Afterwards:** the test copy was deleted.
+- **Not tested:** restore on a different CPU type (amd64). The DB dumps are architecture-independent,
+  but the compose overrides below for amd64 are untested.
+
+### Restore steps on a new machine
+1. **Copy the backup** folder `matrix-hub-<timestamp>/` to the machine.
+   Check it: `cd <backup> && sha256sum -c SHA256SUMS`.
+2. **Get Docker running:**
+   - *New 32-bit Pi like this one:* admin installs `docker-ce`, `docker-ce-rootless-extras`,
+     `docker-compose-plugin` and `uidmap`, and creates user `claude` with a /etc/subuid range.
+     Then, as claude: write `~/.config/docker/daemon.json` (see "Rootless Docker" above),
+     `PATH=/usr/sbin:/sbin:$PATH dockerd-rootless-setuptool.sh install`, the priority drop-in,
+     and `loginctl enable-linger claude`.
+   - *Ordinary amd64/arm64 machine with Docker:* nothing special.
+     Then `export DOCKER_HOST=unix:///var/run/docker.sock` (or your socket).
+3. **Unpack the files:**
+   `mkdir -p ~/projects/matrix-hub && tar -xzf <backup>/files.tar.gz -C ~/projects/matrix-hub`
+4. **Only if the machine differs from this Pi,** append to `.env`:
+   - `HUB_PLATFORM=linux/amd64` (if amd64)
+   - `HUB_SECOPT=no-new-privileges:true` (if the host is NOT a 32-bit Docker install; it keeps that
+     host's default seccomp profile)
+   - `HUB_BIND=<new LAN IP>`
+   - If the IP changed, also replace `192.168.0.129` in `caddy/Caddyfile`, `element/config.json`
+     and `synapse/homeserver.yaml` (public_baseurl). The server name stays `hub.home.arpa`.
+5. **Run the restore:** `cd ~/projects/matrix-hub && ./hub.sh restore <backup>`. It refuses if this
+   project already has containers.
+6. **Re-enable backups:** copy `scripts/systemd/matrixhub-backup.*` to `~/.config/systemd/user/`
+   and `systemctl --user enable --now matrixhub-backup.timer`.
+7. **Devices:** they keep trusting the same CA (it's in the backup). Log in again if needed.
+   Bridges may need re-linking if the backup is old (Stage 4+ will note specifics).
 
 ### VPN check (after any stage that starts something)
 As `pi`: `docker ps --filter name=<vpn-container> --format '{{.Names}} {{.Status}}'` and
