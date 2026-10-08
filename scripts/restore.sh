@@ -4,6 +4,8 @@
 #   scripts/restore.sh /path/to/backups/matrix-hub-YYYYmmdd-HHMMSS
 # Safety: refuses to run if containers of this compose project already exist, so it can
 # never overwrite a running hub. Set COMPOSE_PROJECT_NAME to restore side by side.
+# BEFORE starting a restored hub, make sure the old one is stopped for good: bridges on two
+# machines with the same sessions would fight (and may get your WhatsApp link dropped).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 BK="$(cd "${1:?usage: restore.sh <backup-dir>}" && pwd)"
@@ -39,6 +41,12 @@ for f in "$BK"/db/*.dump; do
      --exit-on-error < "$f"
 done
 
+# RESTORE_START=0: restore databases only. Use it when the old hub might still be running:
+# two copies of a bridge with the same WhatsApp/Discord session must never run at once.
+if [[ "${RESTORE_START:-1}" == 0 ]]; then
+  echo "Databases restored; stack NOT started (RESTORE_START=0)."
+  exit 0
+fi
 echo "Starting the full stack..."
 dc up -d
 echo "Restore done. Check: ./hub.sh status"
