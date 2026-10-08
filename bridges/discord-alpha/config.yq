@@ -9,6 +9,7 @@
 .appservice.id = "discord_alpha" |
 .appservice.bot.username = "discordbot_alpha" |
 .appservice.bot.displayname = "Discord (alpha)" |
+.appservice.bot.avatar = "mxc://hub.home.arpa/vhUOzyIPsahjXUQYovunUfaH" |
 .bridge.username_template = "discord_alpha_{{.}}" |
 .bridge.displayname_template = "{{if .Webhook}}Webhook{{else}}{{or .GlobalName .Username}}{{if .Bot}} (bot){{end}}{{end}} [alpha]" |
 .bridge.channel_name_template = "[alpha] {{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}" |

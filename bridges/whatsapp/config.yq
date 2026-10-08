@@ -6,6 +6,7 @@
 .appservice.id = "whatsapp" |
 .appservice.bot.username = "whatsappbot" |
 .appservice.bot.displayname = "WhatsApp bridge" |
+.appservice.bot.avatar = "mxc://hub.home.arpa/ymqSNwrSCjRjfHXpixyiWCll" |
 .appservice.username_template = "whatsapp_{{.}}" |
 .database.type = "postgres" |
 .database.uri = strenv(DB_URI) |
