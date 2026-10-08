@@ -207,6 +207,44 @@ In the bot DM (`@discordbot_<label>`), per server:
 - Modes: `nothing` | `if-portal-exists` | `create-on-message` (default) | `everything` (= `--entire`).
 - Muting/leaving a room in Element does NOT stop forwarding. Ignored channels add no API traffic.
 
+## Future idea: message watcher / highlights (proposed 2026-10-08, not built)
+**Goal:** read every incoming message across all bridges and notify only on messages of interest the
+user defines.
+
+**Level 1 (available now, nothing to install)**
+- Element → Settings → Notifications → keywords. Synapse evaluates them server-side.
+- Set noisy rooms to **"Mentions & keywords"**, not **Mute**: Mute also silences keywords.
+- Plain word/glob matching only.
+
+**Level 2: watcher service (a future stage; same pattern as a bridge)**
+- One small container (Python, ~30–50 MB), no ports. Logs in as its own device on @piadmin and is
+  **read-only by design**: it never posts in bridged rooms.
+- Rules file (YAML): regex on text; sender; room/network (WhatsApp, `[alpha]`, `[beta]`…);
+  time windows; AND/OR combinations.
+- Matches are posted to one private **"Highlights"** room (sender, room, text, link to the original),
+  so it's one notification channel.
+- **Optional LLM step**, opt-in per room, only for messages that passed a cheap pre-filter:
+  natural-language criteria or a daily digest. This sends message text to an external API
+  (privacy + cost); a useful local model is not realistic on a Pi 4.
+- **Security:** its access token can read everything; it lives in `data/` and the backups.
+- **Design rule:** it must ignore bridge ghosts/bots (no echo loops).
+
+**Considered: Hermes Agent (Nous Research)**, checked 2026-10-08 against its docs.
+- **What it is:** a conversational agent framework with a Matrix gateway.
+  - Answers DMs, and @mentions in rooms by default (`MATRIX_REQUIRE_MENTION`).
+  - Has cron jobs, memory and an allowlist (`MATRIX_ALLOWED_USERS`).
+- **Requirements:** Linux x86_64/aarch64 (arm64 Docker image, so it would need our seccomp profile)
+  and an external LLM API (Nous Portal / OpenRouter / OpenAI-compatible).
+- **Fit:** it's built to be an assistant you talk to, not a silent filter.
+  - To "see everything" it would have to run as @piadmin or be in every bridged room.
+  - Anything it posts in a bridged room would go out to real WhatsApp/Discord contacts (as you,
+    if it runs as your user).
+  - Its docs also warn about echo loops with bridge ghosts.
+- **Conclusion:** not suitable as the watcher. It could later be an *on-demand assistant* layered on
+  top: a dedicated bot user, only in its own private room, `MATRIX_ALLOWED_USERS=@piadmin`,
+  `MATRIX_IGNORE_USER_PATTERNS` for all ghosts, never invited to bridged rooms, fed by the watcher's
+  Highlights/digest rather than raw rooms.
+
 ## Troubleshooting
 - **Diagnostics:** `bash scripts/diag.sh [30m]` (read-only). It shows load, Synapse request
   statuses, the slowest requests, a /sync summary, media failures, warnings and bridge error counts.
@@ -231,6 +269,7 @@ In the bot DM (`@discordbot_<label>`), per server:
   and sets the local icon. It only replaces bridge defaults, never names/pictures you chose.
 
 ## Open items
+- Future idea: message watcher / highlights + Hermes assessment (section above). Not started.
 - Off-Pi backup copy is manual by choice (2026-10-07); reminder: run pull-backups.sh regularly.
 - Optional: encrypt off-Pi backups (gpg/age) if the PC copy might end up in a cloud-synced folder.
 - Optional: test a restore on an amd64 machine with Docker, if one becomes available.
