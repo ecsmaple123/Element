@@ -1,0 +1,81 @@
+# matrix-hub core stack. Runs ONLY on claude's rootless Docker daemon (see hub.sh).
+# Every image here is arm64-only (or used as arm64 for consistency). The 32-bit Docker
+# on this Pi kills 64-bit syscalls with its default seccomp profile, so each service
+# uses seccomp-arm64.json: Docker's default profile with AARCH64 allowed.
+name: matrixhub
+
+x-arm64: &arm64
+  platform: linux/arm64
+  security_opt:
+    - seccomp=/home/claude/projects/matrix-hub/seccomp-arm64.json
+  restart: unless-stopped
+  networks: [hub]
+
+services:
+  postgres:
+    <<: *arm64
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+      SYNAPSE_DB_PASSWORD: ${SYNAPSE_DB_PASSWORD}
+    # Small footprint; synchronous_commit=off trades the last <1s of writes on a crash
+    # (no corruption) for far fewer fsyncs on the SD card.
+    command: >-
+      postgres -c max_connections=40 -c shared_buffers=128MB
+      -c synchronous_commit=off -c checkpoint_timeout=15min
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  synapse:
+    <<: *arm64
+    image: matrixdotorg/synapse:v1.162.0
+    # Two config files: homeserver.yaml (in git) + secrets.yaml (gitignored).
+    entrypoint: ["python", "-m", "synapse.app.homeserver",
+                 "-c", "/config/homeserver.yaml", "-c", "/data/secrets.yaml"]
+    volumes:
+      - ./synapse:/config:ro
+      - ./bridges:/bridges:ro
+      - ./data/synapse:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  element:
+    <<: *arm64
+    image: vectorim/element-web:v1.12.30
+    environment:
+      ELEMENT_WEB_PORT: "8080"
+    volumes:
+      - ./element/config.json:/app/config.json:ro
+
+  caddy:
+    <<: *arm64
+    image: caddy:2.11.7-alpine
+    # The ONLY published port of the whole stack: LAN address, TCP only.
+    ports:
+      - "192.168.0.129:8443:8443/tcp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data
+    depends_on: [synapse, element]
+
+networks:
+  hub:
+    ipam:
+      config:
+        - subnet: 10.231.0.0/24   # avoids LAN, VPN interfaces (<vpn subnets>) and docker0
+
+volumes:
+  pgdata:
+
+# Bridges are added as separate files, one per bridge, e.g.:
+# include:
+#   - bridges/whatsapp/compose.yaml

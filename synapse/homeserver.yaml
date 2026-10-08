@@ -1,0 +1,42 @@
+# Synapse config for a single-user, LAN-only hub. Secrets live in /data/secrets.yaml.
+# server_name is PERMANENT: it is part of every user and room ID.
+server_name: "hub.home.arpa"
+public_baseurl: "https://192.168.0.129:8443/"
+pid_file: /data/homeserver.pid
+signing_key_path: /data/hub.home.arpa.signing.key
+media_store_path: /data/media_store
+log_config: /config/log.config
+report_stats: false
+enable_metrics: false
+
+listeners:
+  - port: 8008
+    bind_addresses: ["0.0.0.0"]   # inside the container network only; Caddy is the front door
+    type: http
+    tls: false
+    x_forwarded: true
+    resources:
+      - names: [client]           # no "federation" resource
+        compress: false
+
+# --- Federation off ---
+federation_domain_whitelist: []   # empty list = federate with nobody
+trusted_key_servers: []
+allow_public_rooms_over_federation: false
+allow_public_rooms_without_auth: false
+
+# --- Closed server ---
+enable_registration: false
+allow_guest_access: false
+
+# --- Keep it light ---
+presence:
+  enabled: false
+url_preview_enabled: false
+caches:
+  global_factor: 0.5
+max_upload_size: 100M
+forget_rooms_on_leave: true
+
+# Bridge registrations are appended here, one line per bridge (mounted at /bridges).
+app_service_config_files: []

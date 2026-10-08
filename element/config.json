@@ -1,0 +1,21 @@
+{
+    "default_server_config": {
+        "m.homeserver": {
+            "base_url": "https://192.168.0.129:8443",
+            "server_name": "hub.home.arpa"
+        }
+    },
+    "disable_custom_urls": true,
+    "disable_guests": true,
+    "disable_3pid_login": true,
+    "brand": "Matrix Hub",
+    "room_directory": {
+        "servers": ["hub.home.arpa"]
+    },
+    "setting_defaults": {
+        "UIFeature.registration": false,
+        "UIFeature.passwordReset": false,
+        "UIFeature.thirdPartyId": false
+    },
+    "show_labs_settings": false
+}

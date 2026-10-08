@@ -1,0 +1,32 @@
+{
+	admin off
+	skip_install_trust
+	auto_https disable_redirects
+	# Browsers send no SNI for IP addresses, and inside the container the local
+	# address isn't the LAN IP, so pick the certificate explicitly.
+	default_sni 192.168.0.129
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://192.168.0.129:8443 {
+	# Certificate from Caddy's own local CA (root cert: data/caddy/pki/authorities/local/root.crt).
+	tls internal
+	encode zstd gzip
+
+	@matrix path /_matrix/* /_synapse/client/*
+	handle @matrix {
+		reverse_proxy synapse:8008
+	}
+
+	handle /.well-known/matrix/client {
+		header Content-Type application/json
+		header Access-Control-Allow-Origin *
+		respond `{"m.homeserver":{"base_url":"https://192.168.0.129:8443"}}`
+	}
+
+	handle {
+		reverse_proxy element:8080
+	}
+}
