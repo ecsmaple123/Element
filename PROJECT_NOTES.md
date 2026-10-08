@@ -12,11 +12,12 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   (alpha = low-risk test account, bridged first). More Discord accounts may be added later.
   `/srv/homeserver` is ignored. The user deleted the old `/home/pi/matrix` experiment and installed `uidmap`.
 - 2026-10-07 — **Stage 2 (core) running.** Admin user `@piadmin:hub.home.arpa` created by the user.
+- 2026-10-07 — Off-Pi backup copy: user chose to keep it **manual** (pull-backups.sh on the PC).
 - 2026-10-07 — **Stage 3 done:** backup script + daily timer, restore script, side-by-side
   restore test passed, first backups copied to the PC.
 
 ## Open items
-- Automate the off-Pi backup copy (PC Task Scheduler, or a USB drive on the Pi): user's choice.
+- Off-Pi backup copy is manual by choice (2026-10-07); reminder: run pull-backups.sh regularly.
 - Optional: encrypt off-Pi backups (gpg/age) if the PC copy might end up in a cloud-synced folder.
 - Optional: test a restore on an amd64 machine with Docker, if one becomes available.
 

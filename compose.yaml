@@ -46,7 +46,7 @@ services:
                  "-c", "/config/homeserver.yaml", "-c", "/data/secrets.yaml"]
     volumes:
       - ./synapse:/config:ro
-      - ./bridges:/bridges:ro
+      - ./data/bridges:/bridges:ro   # bridge registrations (contain tokens)
       - ./data/synapse:/data
     depends_on:
       postgres:
@@ -80,6 +80,6 @@ networks:
 volumes:
   pgdata:
 
-# Bridges are added as separate files, one per bridge, e.g.:
-# include:
-#   - bridges/whatsapp/compose.yaml
+# One file per bridge. Setup: scripts/add-bridge.sh <name> (see PROJECT_NOTES.md, "Adding a bridge").
+include:
+  - bridges/whatsapp/compose.yaml

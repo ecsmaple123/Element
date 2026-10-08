@@ -1,0 +1,18 @@
+# mautrix-whatsapp (bridgev2). Included from ../../compose.yaml.
+# Config, registration and session state live in data/bridges/whatsapp/ (gitignored, backed up).
+services:
+  whatsapp:
+    image: dock.mau.dev/mautrix/whatsapp:v0.2609.0
+    platform: ${HUB_PLATFORM:-linux/arm64}
+    security_opt:
+      - ${HUB_SECOPT:-seccomp=/home/claude/projects/matrix-hub/seccomp-arm64.json}
+    restart: unless-stopped
+    networks: [hub]
+    environment:
+      UID: "0"   # container root = host user claude under rootless Docker
+      GID: "0"
+    volumes:
+      - ../../data/bridges/whatsapp:/data
+    depends_on:
+      synapse:
+        condition: service_healthy
