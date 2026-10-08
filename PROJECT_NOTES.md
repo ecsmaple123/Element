@@ -50,6 +50,17 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   5. Optionally drop the DB `mautrix_whatsapp` + role.
   6. Delete `data/bridges/whatsapp/`.
 
+## Discord: choosing which channels are bridged (any instance; example: alpha)
+In the bot DM (`@discordbot_<label>`), per server:
+1. `guilds bridge <server ID>`
+2. `guilds bridging-mode <server ID> if-portal-exists`: only channels that already have a room
+   are forwarded; others are ignored and no new rooms get created.
+3. `create-portal <channel ID>` for each wanted channel (Discord Developer Mode → right-click → Copy ID).
+- Drop a channel: in its room, `!dc-<label> delete-portal` (it stays gone in `if-portal-exists` mode;
+  in the default `create-on-message` mode it would come back with the next message).
+- Modes: `nothing` | `if-portal-exists` | `create-on-message` (default) | `everything` (= `--entire`).
+- Muting/leaving a room in Element does NOT stop forwarding. Ignored channels add no API traffic.
+
 ## Open items
 - Off-Pi backup copy is manual by choice (2026-10-07); reminder: run pull-backups.sh regularly.
 - Optional: encrypt off-Pi backups (gpg/age) if the PC copy might end up in a cloud-synced folder.
