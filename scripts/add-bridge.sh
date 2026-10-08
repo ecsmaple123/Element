@@ -65,6 +65,31 @@ fi
 echo "[3] applying $src/config.yq"
 yq -i --from-file /cfg/config.yq /bridges/"$svc"/config.yaml
 
+# mautrix bots default to a picture hosted on maunium.net, which this hub can't fetch (federation
+# is off), so Element keeps retrying it. Copy it locally: bridges/icons/<service>.png (kept in git),
+# uploaded through the double-puppet appservice as @piadmin.
+avatar="$(yq '.appservice.bot.avatar' /bridges/"$svc"/config.yaml)"
+if [[ "$avatar" == mxc://maunium.net/* ]]; then
+  echo "[3b] replacing the maunium.net bot picture with a local copy"
+  icon="bridges/icons/$svc.png"; mkdir -p bridges/icons data/bridges/icons
+  [[ -s "$icon" ]] || curl -sfL -o "$icon" \
+    "https://matrix-client.matrix.org/_matrix/media/v3/download/maunium.net/${avatar#mxc://maunium.net/}" || true
+  if [[ -s "$icon" ]]; then
+    cp "$icon" "data/bridges/icons/$svc.png"
+    mxc="$(docker compose exec -T synapse curl -s -X POST -H "Authorization: Bearer $DP_TOKEN" \
+      -H 'Content-Type: image/png' --data-binary "@/bridges/icons/$svc.png" \
+      "http://localhost:8008/_matrix/media/v3/upload?filename=$svc.png&user_id=%40piadmin%3Ahub.home.arpa" </dev/null |
+      python3 -c 'import sys,json; print(json.load(sys.stdin).get("content_uri",""))' 2>/dev/null || true)"
+  fi
+  if [[ "${mxc:-}" == mxc://hub.home.arpa/* ]]; then
+    yq -i ".appservice.bot.avatar = \"$mxc\"" /bridges/"$svc"/config.yaml
+    echo "     done. To keep it on re-runs, add this line to $src/config.yq:"
+    echo "     .appservice.bot.avatar = \"$mxc\" |"
+  else
+    echo "     could not upload it (Synapse not up yet?). Re-run this script later." >&2
+  fi
+fi
+
 if [[ ! -f "$data/registration.yaml" ]]; then
   echo "[4] generating registration"
   dc run --rm --no-deps -T "$svc" </dev/null | tail -2
