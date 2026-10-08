@@ -23,7 +23,12 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - 2026-10-08 — **Stage 5 (Discord):** alpha and beta bridged, one mautrix-discord instance each.
   Separation verified (see below). beta's Element→Discord direction not yet exercised live
   (all 37 beta messages carry the right account); re-run `scripts/check-discord-separation.sh` later.
-- 2026-10-08 — **Stage 8 (remote access/phone) proposed**, waiting for user decisions (phone OS, cert option, VPN test).
+- 2026-10-08 — **Stage 8 (remote access/phone):** the user has an **iPhone**. VPN reachability test PASSED
+  (https://192.168.0.129:8443 opens over mobile data + VPN). Trying **Option A** (hub CA installed on
+  iPhone, Full Trust): CA files `C:\pi-work\matrix-hub\matrix-hub-root-ca.crt` / `.cer`, SHA-256
+  23:E2:10:AC:…:13:6C:7D. The dynamic-DNS name `<vpn-hostname>` is the VPN endpoint: never repoint it.
+  A dynamic-DNS name is a poor cert basis (the DDNS domain not on the PSL → shared LE rate limit; password-only API),
+  so the Option B fallback is DuckDNS or an own domain.
 - 2026-10-08 — **Stage 7 (modularity) done:** "Adding a bridge" guide, `remove-bridge.sh`, add-bridge.sh
   now localizes maunium.net bot pictures; full add→remove round trip tested with Signal.
 - 2026-10-08 — **Stage 6 (WeChat) researched:** no viable bridge; recommendation: don't bridge. Nothing installed.
