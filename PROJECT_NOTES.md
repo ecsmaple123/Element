@@ -21,7 +21,9 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   thumbnails 403). Second restore test (database-only, real data) passed.
 
 - 2026-10-08 — **Stage 5 (Discord):** alpha and beta bridged, one mautrix-discord instance each.
-  Separation verified (see below). Waiting only on one live Element→Discord send in a [beta] room.
+  Separation verified (see below). beta's Element→Discord direction not yet exercised live
+  (all 37 beta messages carry the right account); re-run `scripts/check-discord-separation.sh` later.
+- 2026-10-08 — **Stage 6 (WeChat) researched:** no viable bridge; recommendation: don't bridge. Nothing installed.
 
 ## WhatsApp bridge (Stage 4)
 - **Bridge:** mautrix-whatsapp `v0.2609.0` (bridgev2, internally "v26.09"); service `whatsapp`,
@@ -95,6 +97,23 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - **Upgrade:** bump the tag in the template **and** each `bridges/discord-*/compose.yaml`, back up,
   then `docker compose up -d`. The multi-login rewrite (`megadiscord` branch) is unreleased as of
   2026-10-08; switching to it later would be a migration (new rooms).
+
+## WeChat (Stage 6, researched 2026-10-08): not viable, nothing installed
+| Option | How it connects | Status (checked 2026-10-08) | Runs on this Pi? |
+|---|---|---|---|
+| duo/matrix-wechat + matrix-wechat-agent | Hooks the **Windows** WeChat 3.7.0.30 client (ComWeChatRobot, archived 2023) | Last real commit 2024-02. Open issues: client "version too low" (2024-04), new Synapse incompatible (2024-09/11), "Unable to log in" (2025-12) | No (needs an x86 Windows PC/VM running 24/7) |
+| palpo-im/matrix-bridge-wechat (Rust) | Same Windows agent as above | 1 release (2026-02), 0 stars, built for the Palpo homeserver | No |
+| wechaty/matrix-appservice | Wechaty puppets (web protocol blocked for most accounts; paid PadLocal) | Last push 2022-09 | Unmaintained |
+| LeiShi1313/mautrix-wechat (wechat-box) | Windows WeChat in Wine (x86) | Last push 2022-08 | No |
+| Gewechat / paid "iPad protocol" APIs (GeWeAPI etc.) | Emulated iPad client on someone else's server | Gewechat **discontinued**, citing a crackdown on illegal WeChat data collection. Paid APIs hold your session on third-party servers | Technically, but a privacy + ban risk |
+| Official "ClawBot" / iLink bot API (Tencent, 2026-03) | Official HTTP API | Real and official, but only a conversation between you and **one bot contact**; it can't read or send in your existing chats or groups. Staged rollout (iOS first) | Not a bridge |
+
+- **Risks of the unofficial routes:** WeChat's own help pages say unauthorized plug-ins/clients can
+  lead to **permanent account blocking** and block unblock requests. Tencent tightened enforcement
+  against automation in 2026.
+- **Decision (recommended):** don't bridge WeChat. Keep it on the phone / official desktop client.
+- **Revisit if:** a maintained bridge appears that uses an official chat-access API (not the ClawBot
+  bot-only API), or Tencent opens personal-chat access. Watch: mautrix bridge list, matrix.org/ecosystem/bridges.
 
 ## Discord: choosing which channels are bridged (any instance; example: alpha)
 In the bot DM (`@discordbot_<label>`), per server:
