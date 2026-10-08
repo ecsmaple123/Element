@@ -23,7 +23,85 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - 2026-10-08 — **Stage 5 (Discord):** alpha and beta bridged, one mautrix-discord instance each.
   Separation verified (see below). beta's Element→Discord direction not yet exercised live
   (all 37 beta messages carry the right account); re-run `scripts/check-discord-separation.sh` later.
+- 2026-10-08 — **Stage 7 (modularity) done:** "Adding a bridge" guide, `remove-bridge.sh`, add-bridge.sh
+  now localizes maunium.net bot pictures; full add→remove round trip tested with Signal.
 - 2026-10-08 — **Stage 6 (WeChat) researched:** no viable bridge; recommendation: don't bridge. Nothing installed.
+
+## Adding a bridge (Stage 7, tested end to end 2026-10-08)
+**Test:** a throwaway Signal bridge was added with exactly these steps, verified, then removed with
+`remove-bridge.sh --purge`. Afterwards `compose.yaml` and the Synapse registration list were identical
+to before, and the container/DB/role/data were gone. The other bridges were unaffected (pings OK).
+All commands run in `~/projects/matrix-hub` as claude.
+
+### A. Ready-made
+- **Signal:** `bridges/signal/` exists (v0.2609.0, local bot icon). Start at step 4.
+- **Another Discord account:** `scripts/new-discord.sh <label>` does steps 2–6.
+  Then do 7–9, log in, run `scripts/discord-label-spaces.sh <label>` and
+  `bash scripts/check-discord-separation.sh`.
+
+### B. Any other mautrix bridge (Telegram, Google Messages, Meta, Slack, …)
+0. **Check first:**
+   - The image has **arm64**: open `https://dock.mau.dev/mautrix/<name>/container_registry`, or
+     run the manifest check in Stage 0 notes.
+   - Pick the newest release tag (GitHub releases). Read what login needs (e.g. Telegram needs an
+     api_id/api_hash from my.telegram.org).
+   - Run `./hub.sh backup` and `git commit`.
+1. **Find out the bridge's config layout:**
+   - **Newer framework (bridgev2):** WhatsApp/Signal style; DB under `.database`, double puppet
+     under `.double_puppet.secrets`.
+   - **Older framework:** like Discord v0.7; DB under `.appservice.database`, double puppet under
+     `.bridge.login_shared_secret_map`.
+   - Check the repo's `example-config.yaml` (bridgev2: `pkg/connector/example-config.yaml` +
+     mautrix-go `bridgev2/matrix/mxmain/example-config.yaml`) and its default port.
+2. **`bridges/<svc>/compose.yaml`:** copy `bridges/signal/compose.yaml`; change the service name,
+   image + tag, and `../../data/bridges/<svc>`. **Keep** the `platform` and `security_opt`
+   lines (arm64 + seccomp profile). **No** `ports:`.
+3. **`bridges/<svc>/config.yq`:** copy from Signal (bridgev2) or the Discord template (older
+   framework). Change:
+   - the address/port, `appservice.id`, `bot.username`/`displayname`
+   - `username_template`, which must be a unique prefix: check with
+     `grep -h regex data/bridges/*/registration.yaml`
+   - Drop the `bot.avatar` line (step 5 creates it).
+4. **Add the include line:** `echo "  - bridges/<svc>/compose.yaml" >> compose.yaml`, then
+   `docker compose config --quiet`.
+5. **Pull and configure:** `docker compose pull <svc>`, then `scripts/add-bridge.sh <svc>`.
+   - It creates the default config, the DB `mautrix_<svc>`, applies config.yq, localizes the bot
+     picture, creates the registration and registers it.
+   - Copy the printed `.appservice.bot.avatar = …` line into config.yq.
+6. **Restart Synapse, start the bridge:**
+   `docker compose up -d --force-recreate synapse`, then `docker compose up -d <svc>`.
+   Synapse is briefly down (~25 s); other bridges reconnect by themselves.
+7. **Verify:**
+   - `docker compose logs <svc> | tail` shows "Bridge started".
+   - The ping returns `{"duration_ms":…}`:
+     `AS=$(grep ^as_token: data/bridges/<svc>/registration.yaml | awk '{print $2}');
+     docker compose exec -T synapse curl -s -X POST -H "Authorization: Bearer $AS"
+     -H 'Content-Type: application/json' -d '{}'
+     http://localhost:8008/_matrix/client/v1/appservice/<appservice.id>/ping`
+8. **Log in:** DM `@<bot.username>:hub.home.arpa`, then `login` (`help` lists the options).
+   Afterwards, if the bridge's space shows a blank picture, set a PNG/JPEG one yourself (never AVIF).
+9. **Wrap up:**
+   - Run `./hub.sh backup` (new DBs are included automatically) and `git add -A && git commit`.
+   - Add a short section to these notes.
+   - Check RAM (`bash scripts/diag.sh 10m`).
+
+### C. A non-mautrix bridge (e.g. heisenbridge for IRC, matrix-appservice-*)
+Same pattern, done by hand:
+- **Compose file:** `bridges/<name>/compose.yaml` with the same `platform`/`security_opt`/`networks`
+  lines and an arm64 image (check!).
+- **Database (if needed):** `scripts/new-db.sh <dbname>` prints the URI.
+- **Registration:** generate it per that project's docs into `data/bridges/<name>/registration.yaml`
+  (url `http://<service>:<port>`, unique namespace).
+- **Register and start:** add `/bridges/<name>/registration.yaml` to `app_service_config_files` in
+  `synapse/homeserver.yaml`, add the include line, restart Synapse, start the service.
+- **Never publish a port. Pin the image tag.**
+
+### D. Removing a bridge
+1. In the bot DM: `logout` (invalidates the remote session).
+2. `./hub.sh backup`.
+3. `scripts/remove-bridge.sh <svc>` (disable; keeps DB + data), or `... --purge` (also drops the DB
+   and role and deletes `data/bridges/<svc>/`; asks you to type `PURGE <svc>`).
+4. `git add -A && git commit`. Old rooms stay in Matrix; leave them in Element.
 
 ## WhatsApp bridge (Stage 4)
 - **Bridge:** mautrix-whatsapp `v0.2609.0` (bridgev2, internally "v26.09"); service `whatsapp`,
@@ -47,14 +125,8 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   the linked device.
 - **Upgrade:** bump the tag in `bridges/whatsapp/compose.yaml` → `./hub.sh backup` →
   `docker compose up -d whatsapp`. It migrates its DB itself. Read the release notes first.
-- **Stop just this bridge:** `docker compose stop whatsapp`. **Remove it:**
-  1. In the bot DM: `logout`.
-  2. `docker compose rm -sf whatsapp`.
-  3. Delete the include line in `compose.yaml` and the registration line in
-     `synapse/homeserver.yaml`.
-  4. `docker compose up -d --force-recreate synapse`.
-  5. Optionally drop the DB `mautrix_whatsapp` + role.
-  6. Delete `data/bridges/whatsapp/`.
+- **Stop just this bridge:** `docker compose stop whatsapp`. **Remove it:** see "Adding a bridge" → D
+  (`logout` in the bot DM, then `scripts/remove-bridge.sh whatsapp [--purge]`).
 
 ## Discord bridges (Stage 5)
 - **Model:** one mautrix-discord `v0.7.7` instance per Discord account (that version supports only

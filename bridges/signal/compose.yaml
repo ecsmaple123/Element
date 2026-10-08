@@ -1,4 +1,4 @@
-# mautrix-signal (bridgev2). Included from ../../compose.yaml when enabled.
+# mautrix-signal (bridgev2). READY BUT NOT ENABLED: see PROJECT_NOTES.md "Adding a bridge" (tested 2026-10-08).
 # Config, registration and session state live in data/bridges/signal/ (gitignored, backed up).
 services:
   signal:

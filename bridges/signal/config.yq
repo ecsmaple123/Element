@@ -6,6 +6,7 @@
 .appservice.id = "signal" |
 .appservice.bot.username = "signalbot" |
 .appservice.bot.displayname = "Signal bridge" |
+.appservice.bot.avatar = "mxc://hub.home.arpa/yBBofzxpwwRrJecLQXdwdjNe" |
 .appservice.username_template = "signal_{{.}}" |
 .database.type = "postgres" |
 .database.uri = strenv(DB_URI) |
