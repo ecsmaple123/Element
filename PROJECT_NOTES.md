@@ -10,6 +10,7 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 
 - 2026-10-07 — Plan approved. Server name **hub.home.arpa** (permanent). Discord labels: beta, alpha
   (alpha = low-risk test account, bridged first). More Discord accounts may be added later.
+  Space naming style chosen by the user: "Alpha - Discord" (scripts follow it).
   `/srv/homeserver` is ignored. The user deleted the old `/home/pi/matrix` experiment and installed `uidmap`.
 - 2026-10-07 — **Stage 2 (core) running.** Admin user `@piadmin:hub.home.arpa` created by the user.
 - 2026-10-07 — Off-Pi backup copy: user chose to keep it **manual** (pull-backups.sh on the PC).
@@ -60,6 +61,29 @@ In the bot DM (`@discordbot_<label>`), per server:
   in the default `create-on-message` mode it would come back with the next message).
 - Modes: `nothing` | `if-portal-exists` | `create-on-message` (default) | `everything` (= `--entire`).
 - Muting/leaving a room in Element does NOT stop forwarding. Ignored channels add no API traffic.
+
+## Troubleshooting
+- **Diagnostics:** `bash scripts/diag.sh [30m]` (read-only). It shows load, Synapse request
+  statuses, the slowest requests, a /sync summary, media failures, warnings and bridge error counts.
+- **Missing pictures, 2026-10-08:**
+  1. *Bridge defaults on maunium.net.* Bridge bots default to pictures hosted on maunium.net;
+     federation is off, so Synapse can't fetch them (403) and Element retries constantly.
+     - Fix: the icons were copied to `bridges/icons/` and uploaded locally
+       (WhatsApp `mxc://hub.home.arpa/ymqSNwrSCjRjfHXpixyiWCll`, Discord
+       `mxc://hub.home.arpa/vhUOzyIPsahjXUQYovunUfaH`), then set via `.appservice.bot.avatar`
+       in the yq files. New Discord instances get it from the template.
+     - Still on maunium.net: "bridge info" state in ~45 rooms (WhatsApp's network icon is
+       hard-coded). It's only shown in room settings → Bridges, so it's harmless.
+  2. *AVIF uploads.* Synapse can't thumbnail **AVIF** images ("Failed to find any generated
+     thumbnails" → 400), and Element always asks for a thumbnail. Use PNG/JPEG/WebP for
+     avatars and space pictures.
+- **"Lag" check, 2026-10-08:** server-side sync was healthy (545 syncs/3h, ≤0.06 s CPU each,
+  3 aborted by the browser). If Element feels slow, check client-side first: the certificate
+  must be trusted (service worker), avoid hard reloads (Ctrl+F5 bypasses the service worker),
+  and try another browser.
+- **Discord spaces:** `scripts/discord-label-spaces.sh <label>` (after login) renames the
+  default "Discord"/"Direct Messages" spaces to "<Label> - Discord"/"<Label> - Discord DMs"
+  and sets the local icon. It only replaces bridge defaults, never names/pictures you chose.
 
 ## Open items
 - Off-Pi backup copy is manual by choice (2026-10-07); reminder: run pull-backups.sh regularly.
