@@ -91,6 +91,15 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   - voice/video calls (DM calls show only "started a call")
   - Use the Discord app for voice; running it alongside the bridge is fine.
   - WhatsApp calls aren't bridged either (only a notice).
+- **Blocked/ignored Discord users** (checked against the v0.7.7 source): the bridge doesn't check
+  Discord's block/ignore lists, so their **channel messages are bridged and shown in full** (Discord's
+  servers deliver them to every client; only the Discord app collapses them). Blocked users can't DM
+  you on Discord anyway.
+  - **Remedy:** ignore the person in Element (click name → Ignore). Synapse then filters them out
+    server-side.
+  - **Per instance:** ghosts are per instance, so "Name [alpha]" and "Name [beta]" are separate
+    users to ignore.
+  - **No sync:** Matrix ignore and Discord block don't sync in either direction.
 - **Risk:** this is a self-bot login (against Discord ToS). Watch for captchas, forced re-logins or
   phone-verification prompts; if one appears, stop that instance
   (`docker compose stop discord-<label>`) before trying again.
