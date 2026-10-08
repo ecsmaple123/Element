@@ -2,12 +2,16 @@
 # Every image here is arm64-only (or used as arm64 for consistency). The 32-bit Docker
 # on this Pi kills 64-bit syscalls with its default seccomp profile, so each service
 # uses seccomp-arm64.json: Docker's default profile with AARCH64 allowed.
+#
+# Defaults below fit this Pi. On another machine, override them in .env (see PROJECT_NOTES.md,
+# "Restore"): e.g. HUB_PLATFORM=linux/amd64 and HUB_SECOPT=no-new-privileges:true
+# (which leaves that host's default seccomp profile in place).
 name: matrixhub
 
 x-arm64: &arm64
-  platform: linux/arm64
+  platform: ${HUB_PLATFORM:-linux/arm64}
   security_opt:
-    - seccomp=/home/claude/projects/matrix-hub/seccomp-arm64.json
+    - ${HUB_SECOPT:-seccomp=/home/claude/projects/matrix-hub/seccomp-arm64.json}
   restart: unless-stopped
   networks: [hub]
 
@@ -61,7 +65,7 @@ services:
     image: caddy:2.11.7-alpine
     # The ONLY published port of the whole stack: LAN address, TCP only.
     ports:
-      - "192.168.0.129:8443:8443/tcp"
+      - "${HUB_BIND:-192.168.0.129}:${HUB_PORT:-8443}:8443/tcp"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./data/caddy:/data
@@ -71,7 +75,7 @@ networks:
   hub:
     ipam:
       config:
-        - subnet: 10.231.0.0/24   # avoids LAN, VPN interfaces (<vpn subnets>) and docker0
+        - subnet: ${HUB_SUBNET:-10.231.0.0/24}   # avoids LAN, VPN interfaces (<vpn subnets>) and docker0
 
 volumes:
   pgdata:

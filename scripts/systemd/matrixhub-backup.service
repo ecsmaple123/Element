@@ -1,0 +1,8 @@
+[Unit]
+Description=matrix-hub backup (databases + files)
+
+[Service]
+Type=oneshot
+ExecStart=/home/claude/projects/matrix-hub/scripts/backup.sh
+Nice=15
+IOSchedulingClass=idle

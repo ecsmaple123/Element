@@ -14,6 +14,8 @@ Usage: ./hub.sh <command>
   status          containers, health, CPU/RAM
   logs [service]  follow logs
   adduser         create a Matrix user (interactive; asks for name/password/admin)
+  backup          back up databases + files to backups/ (keeps newest 7)
+  restore <dir>   restore a backup into this folder (fresh machine; see PROJECT_NOTES.md)
   daemon-stop     stop claude's rootless Docker daemon entirely (stops everything)
   daemon-start    start it again
   remove          tear everything down, uninstall rootless Docker (asks first)
@@ -28,6 +30,8 @@ case "${1:-}" in
            echo
            docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}' ;;
   logs)    shift; docker compose logs --tail=100 -f "$@" ;;
+  backup)  scripts/backup.sh ;;
+  restore) shift; scripts/restore.sh "$@" ;;
   adduser) docker compose exec synapse register_new_matrix_user \
              -c /data/secrets.yaml http://localhost:8008 ;;
   daemon-stop)  systemctl --user stop docker.service docker.socket ;;
