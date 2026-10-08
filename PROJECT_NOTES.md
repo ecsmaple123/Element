@@ -23,6 +23,7 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
 - 2026-10-08 — **Stage 5 (Discord):** alpha and beta bridged, one mautrix-discord instance each.
   Separation verified (see below). beta's Element→Discord direction not yet exercised live
   (all 37 beta messages carry the right account); re-run `scripts/check-discord-separation.sh` later.
+- 2026-10-08 — **Stage 8 (remote access/phone) proposed**, waiting for user decisions (phone OS, cert option, VPN test).
 - 2026-10-08 — **Stage 7 (modularity) done:** "Adding a bridge" guide, `remove-bridge.sh`, add-bridge.sh
   now localizes maunium.net bot pictures; full add→remove round trip tested with Signal.
 - 2026-10-08 — **Stage 6 (WeChat) researched:** no viable bridge; recommendation: don't bridge. Nothing installed.
@@ -206,6 +207,61 @@ In the bot DM (`@discordbot_<label>`), per server:
   in the default `create-on-message` mode it would come back with the next message).
 - Modes: `nothing` | `if-portal-exists` | `create-on-message` (default) | `everything` (= `--entire`).
 - Muting/leaving a room in Element does NOT stop forwarding. Ignored channels add no API traffic.
+
+## Remote access / phone (Stage 8 proposal, 2026-10-08; nothing implemented)
+**Server side is ready for Element X** (checked):
+- simplified sliding sync `org.matrix.simplified_msc3575: true`
+- password login
+- `.well-known/matrix/client` served
+- server_name `hub.home.arpa` stays as is
+
+**Path:** phone → existing VPN tunnel → 192.168.0.129:8443. No new ports, no router/firewall changes,
+nothing exposed to the internet.
+
+**Three problems to solve**
+1. **Reachability.** The VPN client must route 192.168.0.129 into the tunnel (full tunnel, or
+   AllowedIPs containing 192.168.0.129/32 or 192.168.0.0/24), and the Pi must accept VPN→LAN-IP
+   connections. Claude can't inspect VPN/firewall config.
+   - **Test (user, read-only):** on mobile data with the VPN on, open https://192.168.0.129:8443 in
+     the phone browser. A certificate warning means reachable; a timeout means a routing problem.
+2. **Certificate.** Element X on **Android ignores user-installed CAs** (several open issues, no fix),
+   so our Caddy local CA will very likely fail there. iOS can fully trust an installed profile, but
+   that isn't verified for Element X.
+   - **Option A (iOS only, free, no Pi change):** install `matrix-hub-root-ca.crt` as a profile,
+     enable Full Trust, test. Unreliable.
+   - **Option B (recommended, both OSes):** a real Let's Encrypt certificate via **DNS-01**, with no
+     inbound ports.
+     - A name you control (free DuckDNS subdomain, or own domain ~€10/yr with Cloudflare/Porkbun
+       API) has an A record → 192.168.0.129. Only resolvable, not reachable from the internet.
+     - Pi changes:
+       - a Caddy image built locally from the official `caddy:builder` with the DNS module, pinned
+       - an API token in `.env`
+       - a new site block (**keep** the IP site + local CA as fallback)
+       - Element `base_url`, the well-known, Synapse `public_baseurl`
+     - Downtime ~1 min.
+     - Side effects: the hostname appears in public Certificate Transparency logs; the public DNS
+       shows a private IP.
+     - Risk to check first: DNS resolvers with rebinding protection (possibly the Pi's own unbound,
+       if VPN clients use it) may refuse public names that point to private IPs. Fixing that would
+       be a DNS change → separate approval.
+3. **Push notifications**
+   - Element X registers with Element's push gateway; Synapse sends **IDs/counts only, no message
+     text** (event_id_only) outbound over HTTPS (works today, no federation needed).
+   - The phone then fetches the message from the hub, so **the VPN must be connected** to show
+     content. Otherwise expect a generic or no notification.
+   - Recommended: always-on VPN on the phone. A split tunnel (only 192.168.0.129/32 through the hub
+     tunnel) is a **phone-side** VPN app edit, not a Pi change, and is optional.
+
+**Proposed steps after approval**
+- (0) user reachability test
+- (1) pick the cert option
+- (2, if B) user creates the DuckDNS/domain + API token; Claude builds Caddy, adds the name-based site
+  alongside the IP site, verifies from the PC
+- (3) Element X sign-in with the new URL
+- (4) push test with the VPN on/off
+- (5) VPN health check + notes
+
+No sudo needed unless a DNS override turns out necessary.
 
 ## Future idea: message watcher / highlights (proposed 2026-10-08, not built)
 **Goal:** read every incoming message across all bridges and notify only on messages of interest the
