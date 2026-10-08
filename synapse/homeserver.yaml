@@ -37,3 +37,4 @@ forget_rooms_on_leave: true
 app_service_config_files:
   - /bridges/doublepuppet.yaml
   - /bridges/whatsapp/registration.yaml
+  - /bridges/discord-alpha/registration.yaml

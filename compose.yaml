@@ -83,3 +83,4 @@ volumes:
 # One file per bridge. Setup: scripts/add-bridge.sh <name> (see PROJECT_NOTES.md, "Adding a bridge").
 include:
   - bridges/whatsapp/compose.yaml
+  - bridges/discord-alpha/compose.yaml
