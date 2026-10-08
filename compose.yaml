@@ -84,3 +84,4 @@ volumes:
 include:
   - bridges/whatsapp/compose.yaml
   - bridges/discord-alpha/compose.yaml
+  - bridges/discord-beta/compose.yaml
