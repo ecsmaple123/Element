@@ -29,6 +29,9 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   23:E2:10:AC:…:13:6C:7D. The dynamic-DNS name `<vpn-hostname>` is the VPN endpoint: never repoint it.
   A dynamic-DNS name is a poor cert basis (the DDNS domain not on the PSL → shared LE rate limit; password-only API),
   so the Option B fallback is DuckDNS or an own domain.
+- 2026-10-10 — **Stage 8 done (Option A):** hub CA trusted on the iPhone; **Element X signs in and works** via
+  the VPN at https://192.168.0.129:8443. No Pi change. Push with VPN on/off not formally tested (expected:
+  content only while the VPN is connected).
 - 2026-10-08 — **Stage 7 (modularity) done:** "Adding a bridge" guide, `remove-bridge.sh`, add-bridge.sh
   now localizes maunium.net bot pictures; full add→remove round trip tested with Signal.
 - 2026-10-08 — **Stage 6 (WeChat) researched:** no viable bridge; recommendation: don't bridge. Nothing installed.
