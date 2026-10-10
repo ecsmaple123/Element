@@ -39,3 +39,4 @@ app_service_config_files:
   - /bridges/whatsapp/registration.yaml
   - /bridges/discord-alpha/registration.yaml
   - /bridges/discord-beta/registration.yaml
+  - /bridges/meta/registration.yaml

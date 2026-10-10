@@ -1,0 +1,18 @@
+# mautrix-meta (bridgev2): Facebook Messenger (and Instagram; chosen at login). Added 2026-10-10.
+# Config, registration and session state live in data/bridges/meta/ (gitignored, backed up).
+services:
+  meta:
+    image: dock.mau.dev/mautrix/meta:v0.2609.0
+    platform: ${HUB_PLATFORM:-linux/arm64}
+    security_opt:
+      - ${HUB_SECOPT:-seccomp=/home/claude/projects/matrix-hub/seccomp-arm64.json}
+    restart: unless-stopped
+    networks: [hub]
+    environment:
+      UID: "0"   # container root = host user claude under rootless Docker
+      GID: "0"
+    volumes:
+      - ../../data/bridges/meta:/data
+    depends_on:
+      synapse:
+        condition: service_healthy

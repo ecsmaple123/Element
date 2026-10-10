@@ -29,6 +29,7 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   23:E2:10:AC:…:13:6C:7D. The dynamic-DNS name `<vpn-hostname>` is the VPN endpoint: never repoint it.
   A dynamic-DNS name is a poor cert basis (the DDNS domain not on the PSL → shared LE rate limit; password-only API),
   so the Option B fallback is DuckDNS or an own domain.
+- 2026-10-10 — **Messenger bridge (mautrix-meta) running**, awaiting login. See its section.
 - 2026-10-10 — **Stage 8 done (Option A):** hub CA trusted on the iPhone; **Element X signs in and works** via
   the VPN at https://192.168.0.129:8443. No Pi change. Push with VPN on/off not formally tested (expected:
   content only while the VPN is connected).
@@ -187,6 +188,17 @@ Same pattern, done by hand:
 - **Upgrade:** bump the tag in the template **and** each `bridges/discord-*/compose.yaml`, back up,
   then `docker compose up -d`. The multi-login rewrite (`megadiscord` branch) is unreleased as of
   2026-10-08; switching to it later would be a migration (new rooms).
+
+## Facebook Messenger bridge (added 2026-10-10)
+- **mautrix-meta v0.2609.0** (bridgev2), service `meta`, internal port 29319 (no published port).
+  Bot `@metabot:hub.home.arpa`, puppets `@meta_*`, DB `mautrix_meta`, data `data/bridges/meta/`.
+- Image checked for arm64 (registry auth realm is https://mau.dev/jwt/auth).
+- Facebook vs Messenger vs Instagram is chosen **at login**, not in the config. Messenger's default
+  end-to-end encrypted chats are supported by the bridge.
+- **Risk (flagged to the user):** unofficial client; Meta may checkpoint/lock the account or force a
+  password reset; new-device security emails are normal. Login uses browser cookies (= full account
+  access, stored in the bridge DB and therefore in backups).
+- Remove: `logout` in the bot DM, then `scripts/remove-bridge.sh meta [--purge]`.
 
 ## WeChat (Stage 6, researched 2026-10-08): not viable, nothing installed
 | Option | How it connects | Status (checked 2026-10-08) | Runs on this Pi? |
