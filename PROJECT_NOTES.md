@@ -37,6 +37,12 @@ Work dir on Pi: `/home/claude/projects/matrix-hub` (local mirror: `C:\pi-work\ma
   now localizes maunium.net bot pictures; full add→remove round trip tested with Signal.
 - 2026-10-08 — **Stage 6 (WeChat) researched:** no viable bridge; recommendation: don't bridge. Nothing installed.
 
+- 2026-10-24 — **Public on GitHub as Element:** https://github.com/ecsbeta123/Element, plus a README.
+  Commits are now made as the user (Forest Li, GitHub noreply email). GitHub gets a cleaned copy built
+  on the PC by `C:\pi-work\sync-repos.sh`: Discord labels, the VPN endpoint, ports and subnets are
+  replaced by placeholders, and a leak check blocks the push otherwise. This repo and the running stack
+  are unchanged.
+
 ## Adding a bridge (Stage 7, tested end to end 2026-10-08)
 **Test:** a throwaway Signal bridge was added with exactly these steps, verified, then removed with
 `remove-bridge.sh --purge`. Afterwards `compose.yaml` and the Synapse registration list were identical
